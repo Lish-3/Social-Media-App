@@ -130,6 +130,42 @@ app.post('/comment/:postid', authenticate, (req, res) => {
 
 });
 
+//Like Section
+app.post('/like/:postid', authenticate, (req, res) => {
+    const postid = parseInt(req.params.postid);   //here get post id from url 
+   
+    const loginuser = usersdata.find(user => user.username === req.user.username);
+
+    if (!loginuser) {
+        return res.status(404).json({ message: "Users not found for Like" });
+    }
+  let  posttolike = null;
+
+  for (const user of usersdata){
+    const post = user.post.find(post => post.id === postid);
+    //check post found or not 
+    if(post){
+        posttolike = post;
+        break; 
+    }
+  }
+
+  //If post not found 
+  if (!posttolike) {
+    return res.status(404).json({ message: "Post not found found" });
+}
+
+    //Cannot comment on own post 
+    if(posttolike.username === loginuser.username)
+    {
+        return res.status(403).json({ message: "Cannot like on own post " });
+    }
+
+    posttolike.like  +=1;
+
+    res.json({message: "Post Liked Success!!" , post: posttolike});
+
+});
 
 
 const port =5000;
