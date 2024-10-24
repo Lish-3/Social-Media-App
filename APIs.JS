@@ -56,3 +56,35 @@ app.get('/admin', authenticate, (req, res) => {
     res.json({ message: "Welcome Admin, you have full access" });
 });
 
+//Post Section 
+app.get('/profile', authenticate, (req, res) => {
+    const loginuser = usersdata.find(user => user.username === req.user.username);
+    if (!loginuser) 
+        return res.status(404).json({ message: "User not found for desired profile" });
+
+    res.json({ post: loginuser.post });
+});
+
+//Timeline Section 
+app.get('/timeline', authenticate, (req, res) => {
+    const loginuser = usersdata.find(user => user.username === req.user.username);
+    if (!loginuser) {
+        return res.status(404).json({ message: "Users not found for timeline" });
+    }
+        const timelinepost = [];
+        usersdata.forEach(user =>{
+            user.post.forEach(post =>{
+                if(!loginuser.post.some(userpost =>userpost.id === post.id))
+                {
+                    timelinepost.push(post);
+                }
+            });
+        });
+
+        res.json({timeline: timelinepost});
+});
+
+const port =5000;
+app.listen(port, () =>{
+    console.log(`Sever is running on port: http://localhost:${port}`);
+});
