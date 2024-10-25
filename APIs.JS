@@ -53,6 +53,7 @@ app.post('/login', (req, res) => {
     res.json({ message: 'Login Success', token });
 });
 
+//Admin access
 app.get('/admin', authenticate, (req, res) => {
     if (req.user.role !== 'admin') {
         return res.status(403).json({ message: "Not an admin...Admin access required !!" });
@@ -60,7 +61,8 @@ app.get('/admin', authenticate, (req, res) => {
     res.json({ message: "Welcome Admin, you have full access" });
 });
 
-//Post Section 
+//Post Section
+//POST profile Section
 app.get('/profile', authenticate, (req, res) => {
     const loginuser = usersdata.find(user => user.username === req.user.username);
     if (!loginuser) 
@@ -69,7 +71,7 @@ app.get('/profile', authenticate, (req, res) => {
     res.json({ post: loginuser.post });
 });
 
-//Timeline Section 
+//Timeline posts Section 
 app.get('/timeline', authenticate, (req, res) => {
     const loginuser = usersdata.find(user => user.username === req.user.username);
     if (!loginuser) {
@@ -87,44 +89,42 @@ app.get('/timeline', authenticate, (req, res) => {
 
         res.json({timeline: timelinepost});
 });
+// Delete a post
+app.delete('/delete/:postid', authenticate, (req, res) => {
+    const postId = parseInt(req.params.postid);
+
+    const postOwner = usersdata.find(user => user.post.some(post => post.id === postId));
+    
+    if (!postOwner) return res.status(404).json({ message: "Post not found" });
+
+    // Only post owner or admin can delete
+    if (req.user.username !== postOwner.username && req.user.role !== 'admin') {
+        return res.status(403).json({ message: "You can only delete your own post" });
+    }
+
+    postOwner.post = postOwner.post.filter(post => post.id !== postId);
+    res.json({ message: "Post deleted successfully" });
+});
 
 //Comment Section
 app.post('/comment/:postid', authenticate, (req, res) => {
     const postid = parseInt(req.params.postid);   //here get post id from url 
     const { commentdata }= req.body;  //get data from body
     
-    const loginuser = usersdata.find(user => user.username === req.user.username);
+    const postuser = usersdata.find(user => user.post.some(post => post.id === postid));
 
-    if (!loginuser) {
-        return res.status(404).json({ message: "Users not found for commenting" });
+    if (!postuser) {
+        return res.status(404).json({ message: "Post not found for commenting" });
     }
-  let  posttocomment = null;
 
-  for (const user of usersdata){
-    const post = user.post.find(post => post.id === postid);
-    //check post found or not 
-    if(post){
-        posttocomment = post;
-        break; 
-    }
-  }
+ const posttocomment = postuser.post.find(post => post.id === postid);
 
-  //If post not found 
-  if (!posttocomment) {
-    return res.status(404).json({ message: "Post not found found" });
-}
-
-    //Cannot comment on own post 
-    if(posttocomment.username === loginuser.username)
+ //Cannot comment on own post 
+    if(postuser.username === req.user.username)
     {
         return res.status(403).json({ message: "Cannot comment on own post " });
     }
-     //comment array initialized
-     if(!posttocomment.comments){
-        posttocomment.comments = [];
-     }
-
-    posttocomment.comments.push({ username: loginuser.username, text: commentdata});
+    posttocomment.comments.push({ username: req.user.username, text: commentdata});
 
     res.json({message: "New comment added" , post: posttocomment});
 
@@ -134,29 +134,14 @@ app.post('/comment/:postid', authenticate, (req, res) => {
 app.post('/like/:postid', authenticate, (req, res) => {
     const postid = parseInt(req.params.postid);   //here get post id from url 
    
-    const loginuser = usersdata.find(user => user.username === req.user.username);
+    const postuser = usersdata.find(user => user.post.some(post => post.id === postid));
 
-    if (!loginuser) {
-        return res.status(404).json({ message: "Users not found for Like" });
+    if (!postuser) {
+        return res.status(404).json({ message: "Post not found for Like" });
     }
-  let  posttolike = null;
-
-  for (const user of usersdata){
-    const post = user.post.find(post => post.id === postid);
-    //check post found or not 
-    if(post){
-        posttolike = post;
-        break; 
-    }
-  }
-
-  //If post not found 
-  if (!posttolike) {
-    return res.status(404).json({ message: "Post not found found" });
-}
-
-    //Cannot comment on own post 
-    if(posttolike.username === loginuser.username)
+const posttolike = postuser.post.find(post => post.id === postid);
+//Cannot comment on own post 
+    if(posttolike.username === req.user.username)
     {
         return res.status(403).json({ message: "Cannot like on own post " });
     }
@@ -166,7 +151,6 @@ app.post('/like/:postid', authenticate, (req, res) => {
     res.json({message: "Post Liked Success!!" , post: posttolike});
 
 });
-
 
 const port =5000;
 app.listen(port, () =>{
